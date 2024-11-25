@@ -294,6 +294,20 @@ holdout_reconstruction_scores.to_csv(
     index=list(adata_holdout.obs_names),
 )
 # %%
+# load results
+adm_scores = pd.read_csv(
+    f"../results/aws_pipeline/admissibility/{holdout_sample}_admissibility_scores.csv",
+    index_col=0,
+)
+admissibility_df = pd.read_csv(
+    f"../results/aws_pipeline/admissibility/{holdout_sample}_is_admissible.csv",
+    index_col=0,
+)
+holdout_reconstruction_scores = pd.read_csv(
+    f"../results/aws_pipeline/admissibility/{holdout_sample}_reconstruction_scores.csv",
+    index_col=0,
+)
+# %%
 # plot results
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -352,6 +366,54 @@ correlation = plot_data["Reconstruction Scores"].corr(plot_data["Admissibility S
 print(
     f"Correlation coefficient between Reconstruction and Admissibility Scores: {correlation:.4f}"
 )
+# %%
+from scipy import stats
 
+# plot distirbutions of admissible vs non-admissible cells
+plt.figure(figsize=(6, 6))
+sns.histplot(
+    data=plot_data,
+    x="Reconstruction Scores",
+    hue="Is Admissible",
+    kde=True,
+    common_norm=False,
+    stat="density",
+    alpha=0.3,
+)
 
+# Compute KS statistic between admissible and non-admissible distributions
+admissible_scores = plot_data[plot_data["Is Admissible"] == "True"][
+    "Reconstruction Scores"
+]
+nonadmissible_scores = plot_data[plot_data["Is Admissible"] == "False"][
+    "Reconstruction Scores"
+]
+ks_stat, pval = stats.ks_2samp(admissible_scores.values, nonadmissible_scores.values)
+
+# Add KS stat annotation to plot
+plt.text(
+    0.025,
+    0.75,
+    f"KS stat: {ks_stat:.3f}\np-value: {pval:.2e}",
+    transform=plt.gca().transAxes,
+    bbox=dict(facecolor="white", alpha=0.8),
+)
+
+plt.title(
+    f"Distribution of Reconstruction Scores by Admissibility for {holdout_sample}"
+)
+plt.xlabel("Reconstruction Log Probability")
+plt.ylabel("Density")
+plt.tight_layout()
+
+# Save the plot
+plt.savefig(
+    f"../results/aws_pipeline/admissibility/{holdout_sample}_admissibility_compare_distribution.png"
+)
+plt.savefig(
+    f"../results/aws_pipeline/admissibility/{holdout_sample}_admissibility_compare_distribution.svg"
+)
+
+plt.show()
+plt.close()
 # %%
